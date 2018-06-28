@@ -1,6 +1,9 @@
 def builderImageName = "omisegoimages/ewallet-builder"
 def builderImage
 
+def runtimeImageName = "omisegoimages/ewallet-runtime"
+def runtimeImage
+
 def label = "img-ewallet-${UUID.randomUUID().toString()}"
 def buildMsg
 def gitCommit
@@ -70,6 +73,7 @@ podTemplate(
             try {
                 stage('Build') {
                     builderImage = docker.build("${builderImageName}:${gitCommit}", "builder/")
+                    runtimeImage = docker.build("${runtimeImageName}:${gitCommit}", "runtime/")
                 }
             } catch(e) {
                 currentBuild.result = "FAILURE"
@@ -88,6 +92,8 @@ podTemplate(
                         withDockerRegistry(credentialsId: 'd56e0a36-71d1-4c1b-a2c1-d8763f28d7f2') {
                             builderImage.push()
                             builderImage.push('latest')
+                            runtimeImage.push()
+                            runtimeImage.push('latest')
                         }
                     }
                 } catch(e) {

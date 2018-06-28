@@ -116,133 +116,41 @@ ENV PATH=/usr/local/elixir/bin:$PATH
 ENV LD_LIBRARY_PATH=/usr/local/elixir/lib:$LD_LIBRARY_PATH
 
 # ------------------------------------------------------------------------------
-# Ruby
+# S6
 # ------------------------------------------------------------------------------
 
-ENV RUBY_VERSION=2.5.1
-ENV RUBY_DOWNLOAD_SHA256=886ac5eed41e3b5fc699be837b0087a6a5a3d10f464087560d2d21b3e71b754d
+ENV S6_VERSION="1.21.4.0"
 
 RUN set -xe && \
-    apk add --update --no-cache --virtual .ruby-build \
-        autoconf \
-	bison \
-	bzip2 \
-	bzip2-dev \
-	ca-certificates \
-	coreutils \
-	dpkg-dev dpkg \
-	gcc \
-	gdbm-dev \
-	glib-dev \
-	libc-dev \
-	libffi-dev \
-	libressl \
-	libressl-dev \
-	libxml2-dev \
-	libxslt-dev \
-	linux-headers \
-	make \
-	ncurses-dev \
-	procps \
-	readline-dev \
-	ruby \
-	tar \
-	xz \
-	yaml-dev \
-        zlib-dev && \
-    RUBY_DOWNLOAD_URL="https://cache.ruby-lang.org/pub/ruby/${RUBY_VERSION%.*}/ruby-${RUBY_VERSION}.tar.xz" && \
-    RUBY_DOWNLOAD_SHA256="886ac5eed41e3b5fc699be837b0087a6a5a3d10f464087560d2d21b3e71b754d" && \
-    curl -fsL -o ruby-src.tar.xz "${RUBY_DOWNLOAD_URL}" && \
-    echo "${RUBY_DOWNLOAD_SHA256}  ruby-src.tar.xz" |sha256sum -c - && \
-    mkdir -p /usr/local/src/ruby && \
-    tar -xJC /usr/local/src/ruby --strip-components=1 -f ruby-src.tar.xz && \
-    rm ruby-src.tar.xz && \
-    ( \
-        cd /usr/local/src/ruby && \
-        { \
-            echo '#define ENABLE_PATH_CHECK 0'; \
-            echo; \
-            cat file.c; \
-        } > file.c.new && \
-        mv file.c.new file.c && \
-        autoconf && \
-        export ac_cv_func_isnan=yes ac_cv_func_isinf=yes && \
-        ./configure \
-            --prefix=/usr/local/ruby \
-            --build="$(dpkg-architecture --query DEB_BUILD_GNU_TYPE)" \
-            --disable-install-doc \
-            --enable-shared && \
-        make -j$(nproc) && \
-        make install \
-    ) && \
-    rm -rf /usr/local/src/ruby && \
-    scanelf --nobanner -E ET_EXEC -BF '%F' --recursive /usr/local/ruby | xargs -r strip --strip-all && \
-    scanelf --nobanner -E ET_DYN -BF '%F' --recursive /usr/local/ruby | xargs -r strip --strip-unneeded && \
-    RUBY_RUN_DEPS="$( \
-        scanelf --needed --nobanner --format '%n#p' --recursive /usr/local/ruby \
-            | tr ',' '\n' \
-            | sort -u \
-            | awk 'system("[ -e /usr/local/ruby/lib/" $1 " ]") == 0 { next } { print "so:" $1 }' \
-    )" && \
-    apk add --update --no-cache --virtual .ruby-run \
-        $RUBY_RUN_DEPS \
-        bzip2 \
-        ca-certificates \
-        libffi-dev \
-        libressl-dev \
-        procps \
-        yaml-dev \
-        zlib-dev && \
-    apk del .ruby-build && \
-    rm -rf /usr/local/src
-
-ENV PATH=/usr/local/ruby/bin:$PATH
-ENV LD_LIBRARY_PATH=/usr/local/ruby/lib:$LD_LIBRARY_PATH
-
-ENV RUBYGEMS_VERSION="2.7.7"
-ENV BUNDLER_VERSION="1.16.2"
-
-ENV GEM_HOME=/usr/local/bundle
-ENV BUNDLE_PATH="$GEM_HOME"
-ENV BUNDLE_SILENCE_ROOT_WARNING=1
-ENV BUNDLE_APP_CONFIG="$GEM_HOME"
-
-RUN set -xe && \
-    mkdir -p /usr/local/etc && \
-    { \
-        echo 'install: --no-document'; \
-        echo 'update: --no-document'; \
-    } >> /usr/local/etc/gemrc && \
-    gem update --system "${RUBYGEMS_VERSION}" && \
-    gem install bundler --version "${BUNDLER_VERSION}" --force && \
-    mkdir -p "${GEM_HOME}" && \
-    chmod 777 "${GEM_HOME}" && \
-    rm -rf /root/.gem
-
-ENV PATH=$GEM_HOME/bin:$BUNDLE_PATH/gems/bin:$PATH
+    apk add --update --no-cache --virtual .fetch-deps \
+        curl \
+        ca-certificates && \
+    S6_DOWNLOAD_URL="https://github.com/just-containers/s6-overlay/releases/download/v${S6_VERSION}/s6-overlay-amd64.tar.gz" && \
+    S6_DOWNLOAD_SHA256="e903f138dea67e75afc0f61e79eba529212b311dc83accc1e18a449d58a2b10c" && \
+    curl -fsL -o s6-overlay.tar.gz "${S6_DOWNLOAD_URL}" && \
+    echo "${S6_DOWNLOAD_SHA256}  s6-overlay.tar.gz" |sha256sum -c - && \
+    tar -xzC / -f s6-overlay.tar.gz && \
+    rm s6-overlay.tar.gz && \
+    apk del .fetch-deps
 
 # ------------------------------------------------------------------------------
 # Application
 # ------------------------------------------------------------------------------
 
-RUN apk add --update --no-cache --virtual .ewallet-runtime imagemagick && \
-    apk add --update --no-cache --virtual .ewallet-build git build-base && \
-    apk add --update --no-cache --virtual .ewallet-lint cmake libressl-dev && \
-    gem install pronto pronto-dialyzer pronto-credo --no-document
+RUN apk add --update --no-cache --virtual .ewallet-runtime \
+        bash \
+        imagemagick
 
 ARG user=ewallet
 ARG group=ewallet
 ARG uid=10000
 ARG gid=10000
 
-ENV HOME /home/${user}
-
 RUN set -xe && \
     addgroup -g ${gid} ${group} && \
-    adduser -D -h ${HOME} -u ${uid} -G ${group} -H ${user} && \
-    mkdir -p "${HOME}" && \
-    chown "${uid}:${gid}" "${HOME}"
-
-USER ${user}
+    adduser -D -h /app -u ${uid} -G ${group} ${user} && \
+    chown "${uid}:${gid}" "/app"
 
 RUN mix do local.hex --force, local.rebar --force
+
+ENTRYPOINT ["/init"]
