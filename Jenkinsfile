@@ -140,7 +140,7 @@ def notifySlack(String buildStatus = 'STARTED', String buildMsg) {
     }
 
     slackSend(
-        channel: "#sandbox",
+        channel: "#dev-ewallet",
         color: statusColor,
         message: statusMsg
     )
