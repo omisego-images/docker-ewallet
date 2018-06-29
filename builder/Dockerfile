@@ -222,6 +222,66 @@ RUN set -xe && \
 ENV PATH=$GEM_HOME/bin:$BUNDLE_PATH/gems/bin:$PATH
 
 # ------------------------------------------------------------------------------
+# Node
+# ------------------------------------------------------------------------------
+
+ENV NODE_VERSION="9.11.2"
+
+RUN set -xe && \
+    apk add --update --no-cache --virtual .node-build \
+        curl \
+        make \
+        gcc \
+        g++ \
+        python \
+        linux-headers \
+        binutils-gold \
+        libstdc++ && \
+    NODE_DOWNLOAD_URL="https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}.tar.xz" && \
+    NODE_DOWNLOAD_SHA256="06484eac7f6b7c87e96983a039422347c0047284bc4d373d90884ae3966dc213" && \
+    curl -fsL -o node-src.tar.xz "${NODE_DOWNLOAD_URL}" && \
+    echo "${NODE_DOWNLOAD_SHA256}  node-src.tar.xz" |sha256sum -c - && \
+    mkdir -p /usr/local/src/node && \
+    tar -xJC /usr/local/src/node --strip-components=1 -f node-src.tar.xz && \
+    rm node-src.tar.xz && \
+    ( \
+        cd /usr/local/src/node && \
+        export ac_cv_func_isnan=yes ac_cv_func_isinf=yes && \
+        ./configure \
+            --prefix=/usr/local/node \
+            --fully-static && \
+        make -j$(nproc) && \
+        make install \
+    ) && \
+    rm -rf /usr/local/src/node && \
+    scanelf --nobanner -E ET_EXEC -BF '%F' --recursive /usr/local/node | xargs -r strip --strip-all && \
+    scanelf --nobanner -E ET_DYN -BF '%F' --recursive /usr/local/node | xargs -r strip --strip-unneeded && \
+    NODE_RUN_DEPS="$( \
+        scanelf --needed --nobanner --format '%n#p' --recursive /usr/local/node \
+            | tr ',' '\n' \
+            | sort -u \
+            | awk 'system("[ -e /usr/local/node/lib/" $1 " ]") == 0 { next } { print "so:" $1 }' \
+    )" && \
+    apk add --update --no-cache --virtual .node-run \
+        $NODE_RUN_DEPS \
+        ca-certificates && \
+    apk del .node-build && \
+    rm -rf /usr/local/src
+
+ENV PATH=/usr/local/node/bin:$PATH
+ENV LD_LIBRARY_PATH=/usr/local/node/lib:$LD_LIBRARY_PATH
+
+ENV NPM_VERSION="6.1.0"
+ENV YARN_VERSION="1.7.0"
+
+RUN set -xe && \
+    npm install -g npm@${NPM_VERSION} && \
+    npm install -g yarn@${YARN_VERSION} && \
+    find /usr/local/node/lib/node_modules/npm -name test -o -name .bin -type d -print0 | xargs -0 rm -rf && \
+    find /usr/local/node/lib/node_modules/yarn -name test -o -name .bin -type d -print0 | xargs -0 rm -rf && \
+    rm -rf /root/.npm
+
+# ------------------------------------------------------------------------------
 # Application
 # ------------------------------------------------------------------------------
 
