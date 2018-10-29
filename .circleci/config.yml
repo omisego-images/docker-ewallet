@@ -1,0 +1,63 @@
+version: 2
+
+presets:
+  publish_image: &publish_image
+    working_directory: ~/src
+    docker:
+      - image: circleci/buildpack-deps:trusty
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run:
+          name: Preparing cache environment
+          command: |
+            echo "IMAGE_NAME=omisegoimages/ewallet-$IMAGE; export IMAGE_NAME" > "$BASH_ENV"
+            echo "$IMAGE" > .cache1
+            cat "$IMAGE/Dockerfile" > .cache2
+      - restore_cache:
+          name: Restoring Docker image layers cache
+          keys:
+            - v1-docker-image-{{ checksum ".cache1" }}-{{ checksum ".cache2" }}
+            - v1-docker-image-{{ checksum ".cache1" }}-
+            - v1-docker-image-
+      - run:
+          name: Building Docker image
+          command: |
+            docker load -i ~/caches/docker-layers.tar || true
+            docker build --cache-from="$IMAGE_NAME" -t "$IMAGE_NAME" "$IMAGE/"
+            mkdir -p ~/caches
+            docker save -o ~/caches/docker-layers.tar "$IMAGE_NAME"
+      - save_cache:
+          name: Caching Docker image layers
+          paths:
+            - ~/caches/docker-layers.tar
+          key: v1-docker-image-{{ checksum ".cache1" }}-{{ checksum ".cache2" }}
+      - run:
+          name: Publishing Docker Image
+          command: |
+            echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+            if [ "$CIRCLE_BRANCH" = "master" ]; then
+              IMAGE_DATE="$(date -u +%Y%m%d)"
+              docker tag "$IMAGE_NAME" "$IMAGE_NAME:stable"
+              docker tag "$IMAGE_NAME" "$IMAGE_NAME:stable-$IMAGE_DATE"
+              docker push "$IMAGE_NAME:stable"
+              docker push "$IMAGE_NAME:stable-$IMAGE_DATE"
+            else
+              IMAGE_GIT=$(git rev-parse --short HEAD)
+              docker tag "$IMAGE_NAME" "$IMAGE_NAME:dev"
+              docker tag "$IMAGE_NAME" "$IMAGE_NAME:dev-$IMAGE_GIT"
+              docker push "$IMAGE_NAME:dev"
+              docker push "$IMAGE_NAME:dev-$IMAGE_GIT"
+            fi
+
+jobs:
+  publish_builder_image:
+    <<: *publish_image
+    environment:
+      IMAGE: builder
+
+workflows:
+  version: 2
+  build_all:
+    jobs:
+      - publish_builder_image
