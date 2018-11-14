@@ -43,6 +43,7 @@ RUN set -xe \
  && apk add --update --no-cache --virtual .run-deps \
         $RUN_DEPS \
         ca-certificates \
+        libressl \
         libressl-dev \
         lksctp-tools \
  && addgroup -g ${GID} ${GROUP} \
