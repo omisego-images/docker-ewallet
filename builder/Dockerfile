@@ -22,8 +22,20 @@ COPY --from=ewallet-builder-elixir /usr/local/elixir /usr/local/elixir
 COPY --from=ewallet-builder-node /usr/local/node /usr/local/node
 COPY --from=ewallet-builder-python3 /usr/local/python3 /usr/local/python3
 
+ENV LD_LIBRARY_PATH=/usr/local/otp/lib:$LD_LIBRARY_PATH
+ENV LD_LIBRARY_PATH=/usr/local/elixir/lib:$LD_LIBRARY_PATH
+ENV LD_LIBRARY_PATH=/usr/local/node/lib:$LD_LIBRARY_PATH
+ENV LD_LIBRARY_PATH=/usr/local/python3/lib:$LD_LIBRARY_PATH
+ENV PATH=/usr/local/otp/bin:$PATH
+ENV PATH=/usr/local/rebar3/bin:$PATH
+ENV PATH=/usr/local/elixir/bin:$PATH
+ENV PATH=/usr/local/node/bin:$PATH
+ENV PATH=/usr/local/python3/bin:$PATH
+
 ENV HOME /home/${USER}
 ENV LANG=C.UTF-8
+
+ARG DOCKER_COMPOSE_VERSION="1.23.1"
 
 RUN set -xe \
  && apk add --update --no-cache --virtual .utils \
@@ -33,6 +45,14 @@ RUN set -xe \
         findutils \
         git \
         imagemagick \
+        libressl \
+ && pip3 install "docker-compose==$DOCKER_COMPOSE_VERSION" \
+ && find /usr/local/python3 -depth \( \
+            \( -type d -a \( -name test -o -name tests \) \) \
+            -o \
+            \( -type f -a \( -name '*.pyc' -o -name '*.pyo' \) \) \
+        \) -exec rm -rf \{\} \; \
+ && rm -rf "$HOME/.cache" \
  && RUN_DEPS="$( \
         find /usr/local -type f -executable -not \( -name '*tkinter*' \) -exec \
             scanelf --needed --nobanner --format '%n#p' '{}' ';' \
@@ -43,25 +63,14 @@ RUN set -xe \
  && apk add --update --no-cache --virtual .run-deps \
         $RUN_DEPS \
         ca-certificates \
-        libressl \
         libressl-dev \
         lksctp-tools \
  && addgroup -g ${GID} ${GROUP} \
  && adduser -D -h ${HOME} -u ${UID} -G ${GROUP} -H ${USER} \
  && mkdir -p "${HOME}" \
- && chown "${UID}:${GID}" "${HOME}"
+ && chown -R "${UID}:${GID}" "${HOME}"
 
 USER ${USER}
-
-ENV LD_LIBRARY_PATH=/usr/local/otp/lib:$LD_LIBRARY_PATH
-ENV LD_LIBRARY_PATH=/usr/local/elixir/lib:$LD_LIBRARY_PATH
-ENV LD_LIBRARY_PATH=/usr/local/node/lib:$LD_LIBRARY_PATH
-ENV LD_LIBRARY_PATH=/usr/local/python3/lib:$LD_LIBRARY_PATH
-ENV PATH=/usr/local/otp/bin:$PATH
-ENV PATH=/usr/local/rebar3/bin:$PATH
-ENV PATH=/usr/local/elixir/bin:$PATH
-ENV PATH=/usr/local/node/bin:$PATH
-ENV PATH=/usr/local/python3/bin:$PATH
 
 RUN set -xe \
  && mix do local.hex --force, local.rebar --force
