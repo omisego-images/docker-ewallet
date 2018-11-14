@@ -78,6 +78,7 @@ ENV LD_LIBRARY_PATH=/usr/local/python3/lib:$LD_LIBRARY_PATH
 ENV PATH=/usr/local/python3/bin:$PATH
 
 ARG PYTHON3_PIP_VERSION="18.1"
+ARG PYTHON3_PIPENV_VERSION="2018.10.13"
 
 RUN set -xe \
  && apk add --no-cache --virtual .python3-pip-build libressl \
@@ -86,6 +87,7 @@ RUN set -xe \
         --disable-pip-version-check \
         --no-cache-dir \
         "pip==$PYTHON3_PIP_VERSION" \
+ && pip3 install "pipenv==$PYTHON3_PIPENV_VERSION" \
  && rm -f get-pip.py \
  && find /usr/local/python3 -depth \( \
             \( -type d -a \( -name test -o -name tests \) \) \
