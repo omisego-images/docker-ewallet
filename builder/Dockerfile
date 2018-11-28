@@ -39,6 +39,7 @@ ARG DOCKER_COMPOSE_VERSION="1.23.1"
 
 RUN set -xe \
  && apk add --update --no-cache --virtual .utils \
+        bash \
         build-base \
         cmake \
         docker \
