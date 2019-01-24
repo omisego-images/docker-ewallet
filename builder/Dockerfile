@@ -45,6 +45,7 @@ RUN set -xe \
         docker \
         findutils \
         git \
+        openssh \
         imagemagick \
         libressl \
  && pip3 install "docker-compose==$DOCKER_COMPOSE_VERSION" \
