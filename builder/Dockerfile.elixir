@@ -1,8 +1,8 @@
 ARG PREFIX="ewallet-builder"
 FROM $PREFIX-erlang
 
-ARG ELIXIR_VERSION="1.6.5"
-ARG ELIXIR_DOWNLOAD_SHA256="defe2bed953ee729addf1121db3fa42a618ef1d6c57a1f489da03b0e7a626e89"
+ARG ELIXIR_VERSION="1.8.1"
+ARG ELIXIR_DOWNLOAD_SHA256="de8c636ea999392496ccd9a204ccccbc8cb7f417d948fd12692cda2bd02d9822"
 
 RUN set -xe \
  && apk add --update --no-cache --virtual .elixir-build \
