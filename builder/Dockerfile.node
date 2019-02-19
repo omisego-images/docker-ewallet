@@ -1,8 +1,8 @@
 ARG PREFIX="ewallet-builder"
 FROM $PREFIX-base
 
-ARG NODE_VERSION="10.13.0"
-ARG NODE_DOWNLOAD_SHA256="8d80c96a0c28fb508c90de474b1967acd800896f184b8a18235a7e4613fae641"
+ARG NODE_VERSION="10.15.1"
+ARG NODE_DOWNLOAD_SHA256="1a55f7b9fb80442182d9e1eba4fca4dac3c781cdcb25d6be37b24d253f61c858"
 
 RUN set -xe \
  && apk add --update --no-cache --virtual .node-build \
@@ -47,8 +47,8 @@ RUN set -xe \
 ENV PATH=/usr/local/node/bin:$PATH
 ENV LD_LIBRARY_PATH=/usr/local/node/lib:$LD_LIBRARY_PATH
 
-ARG NPM_VERSION="6.4.1"
-ARG YARN_VERSION="1.12.1"
+ARG NPM_VERSION="6.8.0"
+ARG YARN_VERSION="1.13.0"
 
 RUN set -xe \
  && npm install -g npm@${NPM_VERSION} \
