@@ -37,6 +37,7 @@ ENV LANG=C.UTF-8
 
 ARG DOCKER_COMPOSE_VERSION="1.23.2"
 ARG PIPENV_VERSION="2018.11.26"
+ARG KAPITAN_VERSION="0.22.3"
 
 RUN set -xe \
  && apk add --update --no-cache --virtual .utils \
@@ -57,10 +58,13 @@ RUN set -xe \
  && mkdir -p /usr/local/python3-venv \
  && virtualenv /usr/local/python3-venv/docker \
  && virtualenv /usr/local/python3-venv/pipenv \
+ && virtualenv /usr/local/python3-venv/kapitan \
  && /usr/local/python3-venv/docker/bin/pip3 install "docker-compose==$DOCKER_COMPOSE_VERSION" \
  && /usr/local/python3-venv/pipenv/bin/pip3 install "pipenv==$PIPENV_VERSION" \
+ && /usr/local/python3-venv/kapitan/bin/pip3 install "kapitan==$KAPITAN_VERSION" \
  && ln -s /usr/local/python3-venv/docker/bin/docker-compose /usr/local/bin/docker-compose \
  && ln -s /usr/local/python3-venv/pipenv/bin/pipenv /usr/local/bin/pipenv \
+ && ln -s /usr/local/python3-venv/docker/bin/kapitan /usr/local/bin/kapitan \
  && find /usr/local/python3 -depth \( \
             \( -type d -a \( -name test -o -name tests \) \) \
             -o \
