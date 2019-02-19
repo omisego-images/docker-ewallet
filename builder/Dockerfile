@@ -35,7 +35,8 @@ ENV PATH=/usr/local/python3/bin:$PATH
 ENV HOME /home/${USER}
 ENV LANG=C.UTF-8
 
-ARG DOCKER_COMPOSE_VERSION="1.23.1"
+ARG DOCKER_COMPOSE_VERSION="1.23.2"
+ARG PIPENV_VERSION="2018.11.26"
 
 RUN set -xe \
  && apk add --update --no-cache --virtual .utils \
@@ -45,11 +46,27 @@ RUN set -xe \
         docker \
         findutils \
         git \
-        openssh \
+        gnupg \
         imagemagick \
         libressl \
- && pip3 install "docker-compose==$DOCKER_COMPOSE_VERSION" \
+        openssh \
+ && apk add --no-cache --virtual .python3-pip-build \
+        build-base \
+        libffi-dev \
+        libressl-dev \
+ && mkdir -p /usr/local/python3-venv \
+ && virtualenv /usr/local/python3-venv/docker \
+ && virtualenv /usr/local/python3-venv/pipenv \
+ && /usr/local/python3-venv/docker/bin/pip3 install "docker-compose==$DOCKER_COMPOSE_VERSION" \
+ && /usr/local/python3-venv/pipenv/bin/pip3 install "pipenv==$PIPENV_VERSION" \
+ && ln -s /usr/local/python3-venv/docker/bin/docker-compose /usr/local/bin/docker-compose \
+ && ln -s /usr/local/python3-venv/pipenv/bin/pipenv /usr/local/bin/pipenv \
  && find /usr/local/python3 -depth \( \
+            \( -type d -a \( -name test -o -name tests \) \) \
+            -o \
+            \( -type f -a \( -name '*.pyc' -o -name '*.pyo' \) \) \
+        \) -exec rm -rf \{\} \; \
+ && find /usr/local/python3-venv -depth \( \
             \( -type d -a \( -name test -o -name tests \) \) \
             -o \
             \( -type f -a \( -name '*.pyc' -o -name '*.pyo' \) \) \
@@ -67,6 +84,7 @@ RUN set -xe \
         ca-certificates \
         libressl-dev \
         lksctp-tools \
+ && apk del .python3-pip-build \
  && addgroup -g ${GID} ${GROUP} \
  && adduser -D -h ${HOME} -u ${UID} -G ${GROUP} -H ${USER} \
  && mkdir -p "${HOME}" \

@@ -1,8 +1,8 @@
 ARG PREFIX="ewallet-builder"
 FROM $PREFIX-base
 
-ARG PYTHON3_VERSION="3.6.7"
-ARG PYTHON3_DOWNLOAD_SHA256="81fd1401a9d66533b0a3e9e3f4ea1c7c6702d57d5b90d659f971e6f1b745f77d"
+ARG PYTHON3_VERSION="3.7.2"
+ARG PYTHON3_DOWNLOAD_SHA256="d83fe8ce51b1bb48bbcf0550fd265b9a75cdfdfa93f916f9e700aef8444bf1bb"
 
 RUN set -xe \
  && apk add --no-cache --virtual .python3-build \
@@ -77,17 +77,16 @@ RUN cd /usr/local/python3/bin \
 ENV LD_LIBRARY_PATH=/usr/local/python3/lib:$LD_LIBRARY_PATH
 ENV PATH=/usr/local/python3/bin:$PATH
 
-ARG PYTHON3_PIP_VERSION="18.1"
-ARG PYTHON3_PIPENV_VERSION="2018.10.13"
+ARG PYTHON3_PIP_VERSION="19.0.2"
+ARG VIRTUALENV_PIP_VERSION="16.4.0"
 
 RUN set -xe \
- && apk add --no-cache --virtual .python3-pip-build libressl \
  && curl -fsL -o get-pip.py "https://bootstrap.pypa.io/get-pip.py" \
  && python3 get-pip.py \
         --disable-pip-version-check \
         --no-cache-dir \
         "pip==$PYTHON3_PIP_VERSION" \
- && pip3 install "pipenv==$PYTHON3_PIPENV_VERSION" \
+        "virtualenv==$VIRTUALENV_PIP_VERSION" \
  && rm -f get-pip.py \
  && find /usr/local/python3 -depth \( \
             \( -type d -a \( -name test -o -name tests \) \) \
