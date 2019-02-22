@@ -64,7 +64,7 @@ RUN set -xe \
  && /usr/local/python3-venv/kapitan/bin/pip3 install "kapitan==$KAPITAN_VERSION" \
  && ln -s /usr/local/python3-venv/docker/bin/docker-compose /usr/local/bin/docker-compose \
  && ln -s /usr/local/python3-venv/pipenv/bin/pipenv /usr/local/bin/pipenv \
- && ln -s /usr/local/python3-venv/docker/bin/kapitan /usr/local/bin/kapitan \
+ && ln -s /usr/local/python3-venv/kapitan/bin/kapitan /usr/local/bin/kapitan \
  && find /usr/local/python3 -depth \( \
             \( -type d -a \( -name test -o -name tests \) \) \
             -o \
