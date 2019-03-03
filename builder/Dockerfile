@@ -52,6 +52,12 @@ RUN set -xe \
         imagemagick \
         libressl \
         openssh \
+ && apk add --no-cache --virtual .libsecp256k1-build \
+        autoconf \
+        automake \
+        gmp \
+        gmp-dev \
+        libtool \
  && apk add --no-cache --virtual .python3-pip-build \
         build-base \
         libffi-dev \
