@@ -46,6 +46,7 @@ RUN set -xe \
         build-base \
         cmake \
         docker \
+        expect \
         findutils \
         git \
         gnupg \
