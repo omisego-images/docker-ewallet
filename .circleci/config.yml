@@ -1,52 +1,105 @@
-version: 2
+version: 2.1
 
-presets:
-  publish_image: &publish_image
-    working_directory: ~/src
+
+executors:
+  buildpack:
     docker:
       - image: circleci/buildpack-deps:trusty
+    working_directory: ~/src
+
+
+commands:
+  docker_import:
+    description: "Load Docker acrhive from the given directory"
+    parameters:
+      path:
+        type: string
+        description: "Path to directory containing Docker archive to import"
     steps:
-      - checkout
-      - setup_remote_docker
       - run:
-          name: Preparing cache environment
+          name: Import Docker images from archive
           command: |
             set -xe
-            echo "IMAGE_NAME=omisegoimages/ewallet-$IMAGE; export IMAGE_NAME" > "$BASH_ENV"
-            echo "$IMAGE" > .cache1
-            cat "$IMAGE/Dockerfile" > .cache2
-      - restore_cache:
-          name: Restoring Docker image layers cache
-          keys:
-            - v1-docker-image-{{ checksum ".cache1" }}-{{ checksum ".cache2" }}
-            - v1-docker-image-{{ checksum ".cache1" }}-
-            - v1-docker-image-
+            IMPORT_PATH="<<parameters.path>>"
+            IMPORT_PATH=${IMPORT_PATH/\~/$HOME}
+
+            mkdir -p "$(dirname "$IMPORT_PATH")"
+            for file in "$IMPORT_PATH"/*.tar; do
+              if [ -f "$file" ]; then
+                printf "\033[0;33mImporting %s to Docker...\033[0;0m\\n" "$file"
+                docker load -i "$file"
+              fi
+            done
+
+  docker_build:
+    description: "Build Dockerfile with the given parameters"
+    parameters:
+      image:
+        type: string
+        description: "Image name to build"
+      dockerfile:
+        type: string
+        description: "Path to Dockerfile"
+        default: "Dockerfile"
+      import:
+        type: string
+        description: "Path to directory containing Docker archive to import"
+        default: "~/docker"
+      export:
+        type: string
+        description: "Path to export Docker image after running build"
+        default: ""
+      persist_path:
+        type: string
+        description: "Path to persist Docker archive"
+        default: "~/docker"
+    steps:
+      - when:
+          condition: <<parameters.import>>
+          steps:
+            - docker_import:
+                path: <<parameters.import>>
       - run:
-          name: Building Docker image
+          name: Build Docker image
           command: |
             set -xe
-            CACHE_DIR="$HOME/caches"
-            if [ -n "$BUILD_SCRIPT" ] && [ -f "$IMAGE/$BUILD_SCRIPT" ]; then
-              sh $IMAGE/$BUILD_SCRIPT "$IMAGE_NAME" "$CACHE_DIR"
-            else
-              docker load -i "$CACHE_DIR/docker-layers.tar" || true
-              docker build --cache-from="$IMAGE_NAME" -t "$IMAGE_NAME" "$IMAGE/"
-              mkdir -p ~/caches
-              docker save -o "$CACHE_DIR/docker-layers.tar" $IMAGE_NAME
-            fi
-      - save_cache:
-          name: Caching Docker image layers
-          paths:
-            - ~/caches/docker-layers.tar
-          key: v1-docker-image-{{ checksum ".cache1" }}-{{ checksum ".cache2" }}
+            DOCKERFILE="<<parameters.dockerfile>>"
+            DOCKERFILE=${DOCKERFILE/\~/$HOME}
+
+            BASENAME="$(basename "$DOCKERFILE")"
+            DIRNAME="$(dirname "$DOCKERFILE")"
+
+            cd "$DIRNAME" || exit 1
+            docker build . --cache-from "<<parameters.image>>" -t "<<parameters.image>>" -f "$BASENAME"
+      - when:
+          condition: <<parameters.export>>
+          steps:
+            - run:
+                name: Export Docker image to archive
+                command: |
+                  set -xe
+                  EXPORT_PATH="<<parameters.export>>"
+                  EXPORT_PATH=${EXPORT_PATH/\~/$HOME}
+
+                  mkdir -p $(dirname "$EXPORT_PATH")
+                  docker save -o "$EXPORT_PATH" "<<parameters.image>>"
+
+  docker_push:
+    description: "Publish image to Docker Hub"
+    parameters:
+      image:
+        type: string
+        description: "Image name to push"
+    steps:
       - run:
-          name: Logging in to Docker Hub
+          name: Log in to Docker Hub
           command: |
             echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
       - run:
-          name: Publishing Docker Image
+          name: Publish Docker Image
           command: |
             set -xe
+            IMAGE_NAME="<<parameters.image>>"
             if [ "$CIRCLE_BRANCH" = "master" ]; then
               IMAGE_DATE="$(date -u +%Y%m%d)"
               docker tag "$IMAGE_NAME" "$IMAGE_NAME:stable"
@@ -61,15 +114,162 @@ presets:
               docker push "$IMAGE_NAME:dev-$IMAGE_GIT"
             fi
 
+
 jobs:
-  publish_builder_image:
-    <<: *publish_image
-    environment:
-      IMAGE: builder
-      BUILD_SCRIPT: build.sh
+  setup:
+    executor: buildpack
+    steps:
+      - checkout
+      - attach_workspace: &attach_workspace
+          at: ~/
+      - run:
+          description: Compute Dockerfile hashes
+          command: |
+            set -xe
+            cat */Dockerfile* |openssl dgst -sha256 |awk '{ print $2 }' > "docker-ewallet-hash"
+      - restore_cache:
+          keys:
+            - v1-docker-ewallet-{{ checksum "docker-ewallet-hash" }}
+            - v1-docker-ewallet-
+      - persist_to_workspace: &persist_workspace
+          name: Persist workspace
+          root: ~/
+          paths:
+            - docker
+            - src
+
+  build_builder_node:
+    executor: buildpack
+    steps:
+      - setup_remote_docker
+      - attach_workspace: *attach_workspace
+      - docker_build:
+          image: "omisegoimages/ewallet-builder-node"
+          dockerfile: "builder/Dockerfile.node"
+          export: "~/docker/omisegoimages_ewallet_builder_node.tar"
+      - persist_to_workspace:
+          <<: *persist_workspace
+          paths:
+            - docker/omisegoimages_ewallet_builder_node.tar
+
+  build_builder_erlang:
+    executor: buildpack
+    steps:
+      - setup_remote_docker
+      - attach_workspace: *attach_workspace
+      - docker_build:
+          image: "omisegoimages/ewallet-builder-erlang"
+          dockerfile: "builder/Dockerfile.erlang"
+          export: "~/docker/omisegoimages_ewallet_builder_erlang.tar"
+      - persist_to_workspace:
+          <<: *persist_workspace
+          paths:
+            - docker/omisegoimages_ewallet_builder_erlang.tar
+
+  build_builder_elixir:
+    executor: buildpack
+    steps:
+      - setup_remote_docker
+      - attach_workspace: *attach_workspace
+      - docker_build:
+          image: "omisegoimages/ewallet-builder-elixir"
+          dockerfile: "builder/Dockerfile.elixir"
+          export: "~/docker/omisegoimages_ewallet_builder_elixir.tar"
+      - persist_to_workspace:
+          <<: *persist_workspace
+          paths:
+            - docker/omisegoimages_ewallet_builder_elixir.tar
+
+  build_builder:
+    executor: buildpack
+    steps:
+      - setup_remote_docker
+      - attach_workspace: *attach_workspace
+      - docker_build:
+          image: "omisegoimages/ewallet-builder"
+          dockerfile: "builder/Dockerfile"
+          export: "~/docker/omisegoimages_ewallet_builder.tar"
+      - persist_to_workspace:
+          <<: *persist_workspace
+          paths:
+            - docker/omisegoimages_ewallet_builder.tar
+
+  publish_builder:
+    executor: buildpack
+    steps:
+      - setup_remote_docker
+      - attach_workspace: *attach_workspace
+      - docker_import:
+          path: "~/docker"
+      - docker_push:
+          image: "omisegoimages/ewallet-builder"
+
+  build_deploy:
+    executor: buildpack
+    steps:
+      - setup_remote_docker
+      - attach_workspace: *attach_workspace
+      - docker_build:
+          image: "omisegoimages/ewallet-deploy"
+          dockerfile: "deploy/Dockerfile"
+          export: "~/docker/omisegoimages_ewallet_deploy.tar"
+      - persist_to_workspace:
+          <<: *persist_workspace
+          paths:
+            - docker/omisegoimages_ewallet_deploy.tar
+
+  publish_deploy:
+    executor: buildpack
+    steps:
+      - setup_remote_docker
+      - attach_workspace: *attach_workspace
+      - docker_import:
+          path: "~/docker"
+      - docker_push:
+          image: "omisegoimages/ewallet-deploy"
+
+  save_cache:
+    executor: buildpack
+    steps:
+      - attach_workspace: *attach_workspace
+      - save_cache:
+          name: Cache builder image artifacts
+          key: v1-docker-ewallet-{{ checksum "docker-ewallet-hash" }}
+          paths:
+            - ~/docker
+
 
 workflows:
   version: 2
-  build_all:
+  build:
     jobs:
-      - publish_builder_image
+      - setup
+
+      - build_builder_node:
+          requires:
+            - setup
+      - build_builder_erlang:
+          requires:
+            - setup
+      - build_builder_elixir:
+          requires:
+            - build_builder_erlang
+      - build_builder:
+          requires:
+            - build_builder_node
+            - build_builder_elixir
+      - publish_builder:
+          requires:
+            - build_builder
+
+      - build_deploy:
+          requires:
+            - setup
+      - publish_deploy:
+          requires:
+            - build_deploy
+
+      - save_cache:
+          requires:
+            - publish_builder
+            - publish_deploy

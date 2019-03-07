@@ -1,5 +1,4 @@
-ARG PREFIX="ewallet-builder"
-FROM $PREFIX-base
+FROM alpine:3.8
 
 ARG OTP_VERSION="21.2.4"
 ARG OTP_DOWNLOAD_SHA256="833d31ac102536b752e474dc6d69be7cc3e37d2d944191317312b30b1ea8ef0d"
@@ -7,18 +6,21 @@ ARG OTP_DOWNLOAD_SHA256="833d31ac102536b752e474dc6d69be7cc3e37d2d944191317312b30
 RUN set -xe \
  && OTP_DOWNLOAD_URL="https://github.com/erlang/otp/archive/OTP-${OTP_VERSION}.tar.gz" \
  && apk add --update --no-cache --virtual .erlang-build \
-        dpkg-dev dpkg \
-        gcc \
-        g++ \
-        libc-dev \
-        linux-headers \
-        make \
         autoconf \
-        ncurses-dev \
+        ca-certificates \
+        curl \
+        dpkg \
+        dpkg-dev \
+        g++ \
+        gcc \
+        libc-dev \
         libressl-dev \
-        unixodbc-dev \
+        linux-headers \
         lksctp-tools-dev \
+        make \
+        ncurses-dev \
         tar \
+        unixodbc-dev \
  && curl -fsL -o otp-src.tar.gz "${OTP_DOWNLOAD_URL}" \
  && echo "${OTP_DOWNLOAD_SHA256}  otp-src.tar.gz" |sha256sum -c - \
  && mkdir -vp /usr/local/src/otp \
@@ -56,6 +58,9 @@ ARG REBAR3_VERSION="3.8.0"
 ARG REBAR3_DOWNLOAD_SHA256="fc4d08037d39bcc651a4a749f8a5b1a10b2205527df834c2aee8f60725c3f431"
 
 RUN set -xe \
+ && apk add --update --no-cache --virtual .fetch-deps \
+        ca-certificates \
+        curl \
  && REBAR3_DOWNLOAD_URL="https://github.com/erlang/rebar3/archive/${REBAR3_VERSION}.tar.gz" \
  && curl -fsL -o rebar3-src.tar.gz "${REBAR3_DOWNLOAD_URL}" \
  && echo "${REBAR3_DOWNLOAD_SHA256}  rebar3-src.tar.gz" |sha256sum -c - \
@@ -68,7 +73,7 @@ RUN set -xe \
             && mkdir -p /usr/local/rebar3/bin \
             && install -v ./rebar3 /usr/local/rebar3/bin/rebar3 \
     ) \
- && rm -rf /usr/local/src/rebar3 \
+ && apk del .fetch-deps \
  && rm -rf /usr/local/src
 
 ENV PATH=/usr/local/rebar3/bin:$PATH

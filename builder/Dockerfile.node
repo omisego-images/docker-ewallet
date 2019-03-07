@@ -1,19 +1,19 @@
-ARG PREFIX="ewallet-builder"
-FROM $PREFIX-base
+FROM alpine:3.8
 
 ARG NODE_VERSION="10.15.1"
 ARG NODE_DOWNLOAD_SHA256="1a55f7b9fb80442182d9e1eba4fca4dac3c781cdcb25d6be37b24d253f61c858"
 
 RUN set -xe \
  && apk add --update --no-cache --virtual .node-build \
-        curl \
-        make \
-        gcc \
-        g++ \
-        python \
-        linux-headers \
         binutils-gold \
+        ca-certificates \
+        curl \
+        g++ \
+        gcc \
         libstdc++ \
+        linux-headers \
+        make \
+        python \
  && NODE_DOWNLOAD_URL="https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}.tar.xz" \
  && curl -fsL -o node-src.tar.xz "${NODE_DOWNLOAD_URL}" \
  && echo "${NODE_DOWNLOAD_SHA256}  node-src.tar.xz" |sha256sum -c - \
