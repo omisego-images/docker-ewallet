@@ -14,8 +14,8 @@ RUN set -xe \
         libressl-dev \
         openssh-client
 
-ARG CLOUD_SDK_VERSION=237.0.0
-ARG CLOUD_SDK_DOWNLOAD_SHA256="10e08362e750581c6ff3866314ed439a1bb544755657b204bf719f68e03b4ba3"
+ARG CLOUD_SDK_VERSION=255.0.0
+ARG CLOUD_SDK_DOWNLOAD_SHA256="18fcbc81b3b095ff5ef92fd41286a045f782c18d99a976c0621140a8fde3fbad"
 
 RUN set -xe \
  && apk add --update --no-cache --virtual .gcloud-runtime \
@@ -51,8 +51,8 @@ RUN apk add --update --no-cache --virtual .kapitan-runtime \
  && apk del .kapitan-build \
  && kapitan --version
 
-ARG HELM_VERSION="2.13.0"
-ARG HELM_DOWNLOAD_SHA256="15eca6ad225a8279de80c7ced42305e24bc5ac60bb7d96f2d2fa4af86e02c794"
+ARG HELM_VERSION="2.14.2"
+ARG HELM_DOWNLOAD_SHA256="9f50e69cf5cfa7268b28686728ad0227507a169e52bf59c99ada872ddd9679f0"
 
 RUN set -xe \
  && HELM_DOWNLOAD_URL="https://storage.googleapis.com/kubernetes-helm/helm-v${HELM_VERSION}-linux-amd64.tar.gz" \
@@ -66,3 +66,15 @@ RUN set -xe \
  && rm -rf /usr/src/helm \
  && rm helm-src.tar.gz \
  && helm version --client
+
+ARG TERRAFORM_VERSION="0.12.7"
+ARG TERRAFORM_DOWNLOAD_SHA256="a0fa11217325f76bf1b4f53b0f7a6efb1be1826826ef8024f2f45e60187925e7"
+
+RUN set -xe \
+ && TERRAFORM_DOWNLOAD_URL="https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip" \
+ && curl -fsL -o terraform-src.zip "${TERRAFORM_DOWNLOAD_URL}" \
+ && echo "${TERRAFORM_DOWNLOAD_SHA256}  terraform-src.zip" |sha256sum -c - \
+ && unzip terraform-src.zip \
+ && mv terraform /usr/local/bin \
+ && rm terraform-src.zip \
+ && terraform version
