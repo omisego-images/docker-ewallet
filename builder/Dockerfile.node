@@ -1,7 +1,7 @@
 FROM alpine:3.8
 
 ARG NODE_VERSION="12.16.1"
-ARG NODE_DOWNLOAD_SHA256="1a55f7b9fb80442182d9e1eba4fca4dac3c781cdcb25d6be37b24d253f61c858"
+ARG NODE_DOWNLOAD_SHA256="0a95845ba02c46102b5671d0c5732460073f2d397488337e18d1fc30146d412d"
 
 RUN set -xe \
  && apk add --update --no-cache --virtual .node-build \
