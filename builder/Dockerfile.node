@@ -13,7 +13,7 @@ RUN set -xe \
         libstdc++ \
         linux-headers \
         make \
-        python \
+        python3 \
  && NODE_DOWNLOAD_URL="https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}.tar.xz" \
  && curl -fsL -o node-src.tar.xz "${NODE_DOWNLOAD_URL}" \
  && echo "${NODE_DOWNLOAD_SHA256}  node-src.tar.xz" |sha256sum -c - \
