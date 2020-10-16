@@ -4,6 +4,7 @@ ARG NODE_VERSION="12.16.1"
 ARG NODE_DOWNLOAD_SHA256="0a95845ba02c46102b5671d0c5732460073f2d397488337e18d1fc30146d412d"
 
 RUN set -xe \
+ && apk update && apk upgrade \
  && apk add --update --no-cache --virtual .node-build \
         binutils-gold \
         ca-certificates \
