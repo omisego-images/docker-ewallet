@@ -59,6 +59,7 @@ RUN set -xe \
         ca-certificates \
         libressl-dev \
         lksctp-tools \
+        python2 \
  && addgroup -g ${GID} ${GROUP} \
  && adduser -D -h ${HOME} -u ${UID} -G ${GROUP} -H ${USER} \
  && mkdir -p "${HOME}" \
