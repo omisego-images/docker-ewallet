@@ -60,6 +60,7 @@ RUN set -xe \
         libressl-dev \
         lksctp-tools \
         python2 \
+ && apk add --no-cache rust=1.46.0 cargo=1.46.0 \
  && addgroup -g ${GID} ${GROUP} \
  && adduser -D -h ${HOME} -u ${UID} -G ${GROUP} -H ${USER} \
  && mkdir -p "${HOME}" \
