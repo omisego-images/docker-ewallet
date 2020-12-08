@@ -1,4 +1,4 @@
-FROM alpine:3.8
+FROM alpine:3.12
 
 LABEL maintainer="OmiseGO Team <omg@omise.co>"
 LABEL description="Deploy image for OmiseGO eWallet"
@@ -19,7 +19,7 @@ ARG CLOUD_SDK_DOWNLOAD_SHA256="18fcbc81b3b095ff5ef92fd41286a045f782c18d99a976c06
 
 RUN set -xe \
  && apk add --update --no-cache --virtual .gcloud-runtime \
-        python \
+        python2 \
         py-crcmod \
         libc6-compat \
  && CLOUD_SDK_DOWNLOAD_URL="https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-${CLOUD_SDK_VERSION}-linux-x86_64.tar.gz" \
